@@ -76,11 +76,12 @@ class TwitterScraper:
 # Example usage
 if __name__ == "__main__":
     scraper = TwitterScraper()
-    # Example search for climate change tweets
+    # Example search for AI tweets from May 1, 2024 to May 10, 2024
     tweets = scraper.search_tweets(
-        query="climate change",
+        query="AI",
         limit=10,
-        since=datetime.now() - timedelta(days=1)
+        since=datetime(2024, 5, 1),
+        until=datetime(2024, 5, 10)
     )
     df = scraper.to_dataframe(tweets)
     print(f"Scraped {len(tweets)} tweets")
