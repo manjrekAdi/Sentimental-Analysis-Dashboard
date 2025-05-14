@@ -1,0 +1,30 @@
+# Web Framework
+flask==3.0.2
+flask-cors==4.0.0
+
+# Data Processing
+pandas==2.2.1
+numpy==1.26.4
+
+# Web Scraping
+snscrape==0.7.0.20240206
+beautifulsoup4==4.12.3
+requests==2.31.0
+
+# NLP and Machine Learning
+nltk==3.8.1
+textblob==0.17.1
+transformers==4.38.2
+torch==2.2.1
+scikit-learn==1.4.1
+
+# Database
+sqlalchemy==2.0.27
+
+# Utilities
+python-dotenv==1.0.1
+tqdm==4.66.2
+pytest==8.0.2
+
+# API Documentation
+flask-swagger-ui==4.11.1 
