@@ -43,6 +43,11 @@ data/processed/
 *.log
 logs/
 
+# Large datasets and benchmark results
+sentiment140.csv
+sentiment140_benchmark_*.json
+sentiment140_benchmark_*.txt
+
 # Node
 node_modules/
 npm-debug.log*

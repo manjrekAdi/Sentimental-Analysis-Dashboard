@@ -41,9 +41,59 @@ class RedditAPIScraper:
                 'id': submission.id,
                 'author': str(submission.author),
                 'created_utc': submission.created_utc,
-                'num_comments': submission.num_comments
+                'num_comments': submission.num_comments,
+                'subreddit': submission.subreddit.display_name
             })
         return posts
+
+    def search_reddit_posts(self, search_term: str, limit: int = 20, sort: str = 'hot') -> List[Dict]:
+        """
+        Searches for posts across all of Reddit based on a search term.
+        Args:
+            search_term (str): The term to search for
+            limit (int): Number of posts to fetch
+            sort (str): Sort method ('hot', 'new', 'top', 'relevance')
+        Returns:
+            List[Dict]: List of post data
+        """
+        posts = []
+        try:
+            # Search across all of Reddit
+            search_results = self.reddit.subreddit('all').search(search_term, limit=limit, sort=sort)
+            
+            for submission in search_results:
+                posts.append({
+                    'title': submission.title,
+                    'score': submission.score,
+                    'url': submission.url,
+                    'id': submission.id,
+                    'author': str(submission.author),
+                    'created_utc': submission.created_utc,
+                    'num_comments': submission.num_comments,
+                    'subreddit': submission.subreddit.display_name
+                })
+        except Exception as e:
+            print(f"Error searching Reddit: {e}")
+            # Fallback to subreddit search if general search fails
+            if search_term.lower() in ['politics', 'technology', 'science', 'news', 'worldnews']:
+                return self.fetch_subreddit_posts(search_term, limit)
+        
+        return posts
+
+    def fetch_posts_by_topic(self, topic: str, limit: int = 20, search_type: str = 'search') -> List[Dict]:
+        """
+        Unified method to fetch posts either by subreddit or search term.
+        Args:
+            topic (str): The topic/subreddit to search for
+            limit (int): Number of posts to fetch
+            search_type (str): 'subreddit' for specific subreddit, 'search' for general search
+        Returns:
+            List[Dict]: List of post data
+        """
+        if search_type == 'subreddit':
+            return self.fetch_subreddit_posts(topic, limit)
+        else:
+            return self.search_reddit_posts(topic, limit)
 
     @staticmethod
     def preprocess_text(text: str) -> str:
@@ -69,25 +119,4 @@ class RedditAPIScraper:
         return df
 
     def to_dataframe(self, posts: List[Dict]) -> pd.DataFrame:
-        return pd.DataFrame(posts)
-
-# Example usage
-if __name__ == "__main__":
-    # Load credentials from .env file
-    load_dotenv()
-    CLIENT_ID = os.getenv('REDDIT_CLIENT_ID')
-    CLIENT_SECRET = os.getenv('REDDIT_CLIENT_SECRET')
-    USERNAME = os.getenv('REDDIT_USERNAME')
-    PASSWORD = os.getenv('REDDIT_PASSWORD')
-    USER_AGENT = os.getenv('REDDIT_USER_AGENT')
-
-    scraper = RedditAPIScraper(CLIENT_ID, CLIENT_SECRET, USERNAME, PASSWORD, USER_AGENT)
-    posts = scraper.fetch_subreddit_posts('technology', limit=20)
-    df = scraper.to_dataframe(posts)
-    df = scraper.add_sentiment_columns(df)
-    print(f"Scraped {len(posts)} posts from r/technology with sentiment and emotion labels.")
-    print(df[['title', 'vader_label', 'textblob_label', 'bert_label', 'bert_emotion']].head())
-    # Save to CSV in the data directory
-    os.makedirs('data', exist_ok=True)
-    df.to_csv('data/reddit_posts_with_sentiment.csv', index=False)
-    print("Saved labeled data to data/reddit_posts_with_sentiment.csv") 
+        return pd.DataFrame(posts) 

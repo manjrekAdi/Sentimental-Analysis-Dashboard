@@ -5,6 +5,9 @@ from datetime import datetime
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scrapers.reddit_scraper import RedditAPIScraper
+from models.database import SentimentDatabase
+from benchmarking.simple_datasets import Sentiment140Loader
+from benchmarking.evaluator import SentimentEvaluator
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -12,8 +15,9 @@ load_dotenv()
 
 api_bp = Blueprint('api', __name__)
 
-# Initialize scraper
+# Initialize scraper and database
 scraper = None
+db = SentimentDatabase()
 
 def get_scraper():
     global scraper
@@ -32,27 +36,26 @@ def scrape_reddit():
     """Trigger Reddit scraping with specified parameters"""
     try:
         data = request.get_json() or {}
-        subreddit = data.get('subreddit', 'technology')
+        topic = data.get('topic', 'technology')
         limit = data.get('limit', 20)
+        search_type = data.get('search_type', 'search')  # 'subreddit' or 'search'
         
         scraper = get_scraper()
-        posts = scraper.fetch_subreddit_posts(subreddit, limit)
+        posts = scraper.fetch_posts_by_topic(topic, limit, search_type)
         df = scraper.to_dataframe(posts)
         
-        # Save raw data
-        os.makedirs('data', exist_ok=True)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'data/reddit_posts_{subreddit}_{timestamp}.csv'
-        df.to_csv(filename, index=False)
+        # Save to database
+        session_id = db.save_posts_with_sentiment(posts, topic, search_type, limit)
         
         return jsonify({
             'success': True,
-            'message': f'Successfully scraped {len(posts)} posts from r/{subreddit}',
+            'message': f'Successfully scraped {len(posts)} posts for "{topic}" using {search_type}',
             'data': {
-                'subreddit': subreddit,
+                'session_id': session_id,
+                'topic': topic,
+                'search_type': search_type,
                 'limit': limit,
                 'posts_count': len(posts),
-                'filename': filename,
                 'posts': posts[:5]  # Return first 5 posts as sample
             }
         }), 200
@@ -68,40 +71,47 @@ def analyze_sentiment():
     """Run sentiment analysis on scraped data"""
     try:
         data = request.get_json() or {}
-        subreddit = data.get('subreddit', 'technology')
+        topic = data.get('topic', 'technology')
         limit = data.get('limit', 20)
+        search_type = data.get('search_type', 'search')  # 'subreddit' or 'search'
+        display_limit = data.get('display_limit', limit)  # How many posts to display
         
         scraper = get_scraper()
-        posts = scraper.fetch_subreddit_posts(subreddit, limit)
+        posts = scraper.fetch_posts_by_topic(topic, limit, search_type)
         df = scraper.to_dataframe(posts)
         df = scraper.add_sentiment_columns(df)
         
-        # Save analyzed data
-        os.makedirs('data', exist_ok=True)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'data/reddit_posts_with_sentiment_{subreddit}_{timestamp}.csv'
-        df.to_csv(filename, index=False)
+        # Convert DataFrame to list of dictionaries
+        posts_with_sentiment = df.to_dict('records')
         
-        # Prepare summary statistics
-        sentiment_summary = {
-            'vader': df['vader_label'].value_counts().to_dict(),
-            'textblob': df['textblob_label'].value_counts().to_dict(),
-            'bert_sentiment': df['bert_label'].value_counts().to_dict(),
-            'bert_emotion': df['bert_emotion'].value_counts().to_dict()
-        }
+        # Save to database
+        session_id = db.save_posts_with_sentiment(posts_with_sentiment, topic, search_type, limit)
         
-        return jsonify({
-            'success': True,
-            'message': f'Successfully analyzed {len(posts)} posts from r/{subreddit}',
-            'data': {
-                'subreddit': subreddit,
-                'limit': limit,
-                'posts_count': len(posts),
-                'filename': filename,
-                'sentiment_summary': sentiment_summary,
-                'sample_posts': df[['title', 'vader_label', 'textblob_label', 'bert_label', 'bert_emotion']].head(5).to_dict('records')
-            }
-        }), 200
+        # Get the saved data from database
+        result = db.get_latest_analysis(limit)
+        
+        if result:
+            # Return all posts, frontend will handle display limit
+            return jsonify({
+                'success': True,
+                'message': f'Successfully analyzed {len(posts)} posts for "{topic}" using {search_type}',
+                'data': {
+                    'session_id': session_id,
+                    'topic': topic,
+                    'search_type': search_type,
+                    'limit': limit,
+                    'display_limit': display_limit,
+                    'posts_count': len(posts),
+                    'sentiment_summary': result['sentiment_summary'],
+                    'all_posts': result['posts'],  # Return all posts
+                    'sample_posts': result['posts'][:display_limit]  # Return display_limit posts for table
+                }
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to retrieve analysis results from database'
+            }), 500
         
     except Exception as e:
         return jsonify({
@@ -111,42 +121,92 @@ def analyze_sentiment():
 
 @api_bp.route('/results', methods=['GET'])
 def get_results():
-    """Get latest analysis results"""
+    """Get latest analysis results from database"""
     try:
-        data_dir = 'data'
-        if not os.path.exists(data_dir):
+        result = db.get_latest_analysis()
+        
+        if not result:
             return jsonify({
                 'success': False,
-                'error': 'No data directory found'
+                'error': 'No analysis results found in database'
             }), 404
-        
-        # Find the most recent sentiment analysis file
-        sentiment_files = [f for f in os.listdir(data_dir) if 'sentiment' in f and f.endswith('.csv')]
-        if not sentiment_files:
-            return jsonify({
-                'success': False,
-                'error': 'No sentiment analysis files found'
-            }), 404
-        
-        latest_file = max(sentiment_files, key=lambda x: os.path.getctime(os.path.join(data_dir, x)))
-        df = pd.read_csv(os.path.join(data_dir, latest_file))
-        
-        # Prepare summary
-        sentiment_summary = {
-            'vader': df['vader_label'].value_counts().to_dict(),
-            'textblob': df['textblob_label'].value_counts().to_dict(),
-            'bert_sentiment': df['bert_label'].value_counts().to_dict(),
-            'bert_emotion': df['bert_emotion'].value_counts().to_dict()
-        }
         
         return jsonify({
             'success': True,
             'data': {
-                'filename': latest_file,
-                'total_posts': len(df),
-                'sentiment_summary': sentiment_summary,
-                'posts': df.to_dict('records')
+                'session': result['session'],
+                'total_posts': len(result['posts']),
+                'sentiment_summary': result['sentiment_summary'],
+                'posts': result['posts']
             }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api_bp.route('/history', methods=['GET'])
+def get_analysis_history():
+    """Get analysis session history"""
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        history = db.get_analysis_history(limit)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'sessions': history,
+                'total_sessions': len(history)
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api_bp.route('/search', methods=['GET'])
+def search_posts():
+    """Search posts by topic in database"""
+    try:
+        topic = request.args.get('topic', '')
+        limit = request.args.get('limit', 50, type=int)
+        
+        if not topic:
+            return jsonify({
+                'success': False,
+                'error': 'Topic parameter is required'
+            }), 400
+        
+        posts = db.search_posts_by_topic(topic, limit)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'topic': topic,
+                'posts_count': len(posts),
+                'posts': posts
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api_bp.route('/stats', methods=['GET'])
+def get_database_stats():
+    """Get database statistics"""
+    try:
+        stats = db.get_database_stats()
+        
+        return jsonify({
+            'success': True,
+            'data': stats
         }), 200
         
     except Exception as e:
@@ -162,4 +222,65 @@ def health_check():
         'status': 'healthy',
         'message': 'API is running',
         'timestamp': datetime.now().isoformat()
-    }), 200 
+    }), 200
+
+@api_bp.route('/benchmark', methods=['POST'])
+def run_benchmark():
+    """Run sentiment analysis model benchmarking on Sentiment140 dataset"""
+    try:
+        data = request.get_json() or {}
+        filepath = data.get('filepath', 'sentiment140.csv')
+        sample_size = data.get('sample_size', 1000)
+        models = data.get('models', ['vader', 'textblob', 'bert'])
+        
+        # Load Sentiment140 dataset
+        dataset = Sentiment140Loader.load_sentiment140(filepath, sample_size)
+        
+        # Run evaluation
+        evaluator = SentimentEvaluator()
+        results = evaluator.compare_models(dataset, models)
+        
+        # Generate report
+        report = evaluator.generate_report(results)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Benchmark completed on Sentiment140 dataset with {len(dataset.get_texts())} samples',
+            'data': {
+                'dataset': 'Sentiment140',
+                'filepath': filepath,
+                'sample_size': len(dataset.get_texts()),
+                'models_evaluated': models,
+                'results': results,
+                'report': report
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api_bp.route('/benchmark/info', methods=['GET'])
+def get_benchmark_info():
+    """Get information about Sentiment140 benchmarking"""
+    try:
+        info = Sentiment140Loader.get_dataset_info()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'dataset': 'Sentiment140',
+                'description': info['sentiment140'],
+                'file_required': 'sentiment140.csv',
+                'format': 'CSV with 6+ columns: [polarity, id, date, query, user, text]',
+                'polarity_values': '0=negative, 2=neutral, 4=positive'
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500 
