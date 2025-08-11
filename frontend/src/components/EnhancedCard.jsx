@@ -1,91 +1,8 @@
 import React from 'react';
-import { Card, CardContent, Box, Typography, Chip, IconButton, Tooltip } from '@mui/material';
-import { styled } from '@mui/material/styles';
+import { Card, CardContent, Typography, Box, IconButton, Tooltip } from '@mui/material';
+import { motion } from 'framer-motion';
 
-// Styled components for enhanced visual effects
-const StyledCard = styled(Card)(({ theme, variant = 'default' }) => ({
-  position: 'relative',
-  overflow: 'hidden',
-  borderRadius: 20,
-  background: variant === 'gradient' 
-    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    : theme.palette.background.paper,
-  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-  cursor: 'pointer',
-  
-  '&:hover': {
-    transform: 'translateY(-8px) scale(1.02)',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    
-    '& .card-overlay': {
-      opacity: 1,
-    },
-    
-    '& .card-icon': {
-      transform: 'scale(1.1) rotate(5deg)',
-    },
-  },
-  
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '4px',
-    background: variant === 'gradient' 
-      ? 'linear-gradient(90deg, #667eea, #764ba2)'
-      : theme.palette.primary.main,
-    transform: 'scaleX(0)',
-    transition: 'transform 0.3s ease',
-  },
-  
-  '&:hover::before': {
-    transform: 'scaleX(1)',
-  },
-}));
-
-const CardOverlay = styled(Box)(({ theme }) => ({
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-  opacity: 0,
-  transition: 'opacity 0.3s ease',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 1,
-}));
-
-const IconWrapper = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 48,
-  height: 48,
-  borderRadius: 12,
-  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-  marginBottom: theme.spacing(2),
-  transition: 'all 0.3s ease',
-  
-  '& .card-icon': {
-    transition: 'transform 0.3s ease',
-  },
-}));
-
-const MetricValue = styled(Typography)(({ theme, color = 'primary' }) => ({
-  fontSize: '2rem',
-  fontWeight: 700,
-  background: `linear-gradient(135deg, ${theme.palette[color].main} 0%, ${theme.palette[color].dark} 100%)`,
-  backgroundClip: 'text',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-  marginBottom: theme.spacing(1),
-}));
+const MotionCard = motion(Card);
 
 const EnhancedCard = ({ 
   title, 
@@ -93,65 +10,250 @@ const EnhancedCard = ({
   subtitle, 
   icon, 
   color = 'primary', 
+  onClick, 
+  sx = {},
   variant = 'default',
-  onClick,
-  children,
-  elevation = 1,
-  ...props 
+  trend,
+  trendValue,
+  trendDirection = 'up'
 }) => {
-  return (
-    <StyledCard 
-      variant={variant} 
-      elevation={elevation}
-      onClick={onClick}
-      {...props}
-    >
-      <CardOverlay className="card-overlay">
-        <Typography variant="body2" color="primary" fontWeight={600}>
-          Click to view details
-        </Typography>
-      </CardOverlay>
-      
-      <CardContent sx={{ p: 3, position: 'relative', zIndex: 2 }}>
-        {icon && (
-          <IconWrapper>
-            <Box className="card-icon" color={`${color}.main`}>
+  const getColorValue = (colorName) => {
+    const colorMap = {
+      primary: '#6366f1',
+      secondary: '#8b5cf6',
+      success: '#10b981',
+      error: '#ef4444',
+      warning: '#f59e0b',
+      info: '#3b82f6',
+    };
+    return colorMap[colorName] || colorMap.primary;
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    },
+    hover: {
+      y: -8,
+      scale: 1.02,
+      transition: {
+        duration: 0.2,
+        ease: "easeInOut"
+      }
+    }
+  };
+
+  const renderTrendIcon = () => {
+    if (!trend) return null;
+    
+    const iconColor = trendDirection === 'up' ? '#10b981' : '#ef4444';
+    const iconSymbol = trendDirection === 'up' ? '↗' : '↘';
+    
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 0.5,
+        color: iconColor,
+        fontSize: '0.75rem',
+        fontWeight: 600
+      }}>
+        <span>{iconSymbol}</span>
+        <span>{trendValue}%</span>
+      </Box>
+    );
+  };
+
+  if (variant === 'glassmorphism') {
+    return (
+      <MotionCard
+        variants={cardVariants}
+        initial="hidden"
+        animate="visible"
+        whileHover="hover"
+        onClick={onClick}
+        sx={{
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          cursor: onClick ? 'pointer' : 'default',
+          height: '100%',
+          minHeight: { xs: 140, sm: 160, md: 180 },
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          ...sx
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 }, height: '100%' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'flex-start', 
+            justifyContent: 'space-between',
+            mb: 2
+          }}>
+            <Box sx={{ 
+              p: 1.5, 
+              borderRadius: 3, 
+              bgcolor: `${getColorValue(color)}15`,
+              color: getColorValue(color),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
               {icon}
             </Box>
-          </IconWrapper>
-        )}
-        
-        {value && (
-          <MetricValue color={color}>
+            {trend && renderTrendIcon()}
+          </Box>
+          
+          <Typography 
+            variant="h4" 
+            component="div" 
+            sx={{ 
+              fontWeight: 700, 
+              mb: 1,
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+              color: 'text.primary'
+            }}
+          >
             {value}
-          </MetricValue>
-        )}
+          </Typography>
+          
+          <Typography 
+            variant="h6" 
+            component="div" 
+            sx={{ 
+              fontWeight: 600, 
+              mb: 1,
+              fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' },
+              color: 'text.primary'
+            }}
+          >
+            {title}
+          </Typography>
+          
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{ 
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              lineHeight: 1.4
+            }}
+          >
+            {subtitle}
+          </Typography>
+        </CardContent>
+      </MotionCard>
+    );
+  }
+
+  // Default variant with enhanced styling
+  return (
+    <MotionCard
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      whileHover="hover"
+      onClick={onClick}
+      sx={{
+        background: `linear-gradient(135deg, ${getColorValue(color)}08 0%, ${getColorValue(color)}15 100%)`,
+        border: `1px solid ${getColorValue(color)}20`,
+        cursor: onClick ? 'pointer' : 'default',
+        height: '100%',
+        minHeight: { xs: 140, sm: 160, md: 180 },
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '4px',
+          background: `linear-gradient(90deg, ${getColorValue(color)} 0%, ${getColorValue(color)}80 100%)`,
+        },
+        ...sx
+      }}
+    >
+      <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 }, height: '100%' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'flex-start', 
+          justifyContent: 'space-between',
+          mb: 2
+        }}>
+          <Box sx={{ 
+            p: 1.5, 
+            borderRadius: 3, 
+            bgcolor: `${getColorValue(color)}15`,
+            color: getColorValue(color),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'scale(1.1)',
+              bgcolor: `${getColorValue(color)}25`,
+            }
+          }}>
+            {icon}
+          </Box>
+          {trend && renderTrendIcon()}
+        </Box>
+        
+        <Typography 
+          variant="h4" 
+          component="div" 
+          sx={{ 
+            fontWeight: 700, 
+            mb: 1,
+            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+            color: 'text.primary',
+            background: `linear-gradient(135deg, ${getColorValue(color)} 0%, ${getColorValue(color)}80 100%)`,
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}
+        >
+          {value}
+        </Typography>
         
         <Typography 
           variant="h6" 
-          component="h3" 
-          gutterBottom 
+          component="div" 
           sx={{ 
-            fontWeight: 600,
-            color: variant === 'gradient' ? 'white' : 'text.primary'
+            fontWeight: 600, 
+            mb: 1,
+            fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' },
+            color: 'text.primary'
           }}
         >
           {title}
         </Typography>
         
-        {subtitle && (
-          <Typography 
-            variant="body2" 
-            color={variant === 'gradient' ? 'rgba(255,255,255,0.8)' : 'text.secondary'}
-            sx={{ mb: 2 }}
-          >
-            {subtitle}
-          </Typography>
-        )}
-        
-        {children}
+        <Typography 
+          variant="body2" 
+          color="text.secondary"
+          sx={{ 
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            lineHeight: 1.4
+          }}
+        >
+          {subtitle}
+        </Typography>
       </CardContent>
-    </StyledCard>
+    </MotionCard>
   );
 };
 

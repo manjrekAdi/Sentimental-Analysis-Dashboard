@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
 Database Management Script for Sentiment Analysis
-Use this script to explore and manage the SQLite database.
+Use this script to explore and manage the PostgreSQL database.
 """
 
-import sqlite3
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -104,27 +103,10 @@ def show_table_schema():
     print_separator()
     
     db = SentimentDatabase()
-    with sqlite3.connect(db.db_path) as conn:
-        cursor = conn.cursor()
-        
-        # Get table names
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
-        
-        for table in tables:
-            table_name = table[0]
-            print(f"\nTable: {table_name}")
-            print("-" * 40)
-            
-            cursor.execute(f"PRAGMA table_info({table_name});")
-            columns = cursor.fetchall()
-            
-            for col in columns:
-                col_id, name, type_name, not_null, default_val, pk = col
-                pk_str = " PRIMARY KEY" if pk else ""
-                not_null_str = " NOT NULL" if not_null else ""
-                default_str = f" DEFAULT {default_val}" if default_val else ""
-                print(f"  {name} {type_name}{not_null_str}{default_str}{pk_str}")
+    print("PostgreSQL database schema:")
+    print("- posts: id, reddit_id, title, score, url, author, created_utc, num_comments, subreddit, clean_title, created_at")
+    print("- sentiment_analysis: id, post_id, analysis_type, sentiment_label, sentiment_score, emotion_label, created_at")
+    print("- analysis_sessions: id, topic, search_type, limit_count, posts_count, created_at")
 
 def main():
     """Main function"""

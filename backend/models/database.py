@@ -1,33 +1,38 @@
-import sqlite3
 import pandas as pd
 from datetime import datetime
 import os
 from typing import List, Dict, Optional
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 class SentimentDatabase:
-    def __init__(self, db_path: str = 'data/sentiment_analysis.db'):
+    def __init__(self, db_path: str = 'postgresql://postgres.lyxmvoamdtuwenbkjwbx:Adiman%4005@aws-0-us-east-2.pooler.supabase.com:6543/postgres'):
         """Initialize the database connection"""
         self.db_path = db_path
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        self.init_database()
+        self.is_postgres = True
+        self.init_postgres_database()
     
-    def init_database(self):
-        """Initialize the database tables"""
-        with sqlite3.connect(self.db_path) as conn:
+    def get_connection(self):
+        """Get database connection"""
+        return psycopg2.connect(self.db_path)
+    
+    def init_postgres_database(self):
+        """Initialize the PostgreSQL database tables"""
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             
             # Create posts table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS posts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    reddit_id TEXT UNIQUE,
+                    id SERIAL PRIMARY KEY,
+                    reddit_id VARCHAR(255) UNIQUE,
                     title TEXT NOT NULL,
                     score INTEGER,
                     url TEXT,
-                    author TEXT,
-                    created_utc INTEGER,
+                    author VARCHAR(255),
+                    created_utc BIGINT,
                     num_comments INTEGER,
-                    subreddit TEXT,
+                    subreddit VARCHAR(255),
                     clean_title TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -36,14 +41,13 @@ class SentimentDatabase:
             # Create sentiment_analysis table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS sentiment_analysis (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    post_id INTEGER,
-                    analysis_type TEXT NOT NULL,
-                    sentiment_label TEXT,
+                    id SERIAL PRIMARY KEY,
+                    post_id INTEGER REFERENCES posts(id),
+                    analysis_type VARCHAR(50) NOT NULL,
+                    sentiment_label VARCHAR(50),
                     sentiment_score REAL,
-                    emotion_label TEXT,
+                    emotion_label VARCHAR(50),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (post_id) REFERENCES posts (id),
                     UNIQUE(post_id, analysis_type)
                 )
             ''')
@@ -51,9 +55,9 @@ class SentimentDatabase:
             # Create analysis_sessions table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS analysis_sessions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    topic TEXT NOT NULL,
-                    search_type TEXT NOT NULL,
+                    id SERIAL PRIMARY KEY,
+                    topic VARCHAR(255) NOT NULL,
+                    search_type VARCHAR(50) NOT NULL,
                     limit_count INTEGER,
                     posts_count INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -64,22 +68,33 @@ class SentimentDatabase:
     
     def save_posts_with_sentiment(self, posts_data: List[Dict], topic: str, search_type: str, limit_count: int) -> int:
         """Save posts and their sentiment analysis to the database"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             
             # Create analysis session
             cursor.execute('''
                 INSERT INTO analysis_sessions (topic, search_type, limit_count, posts_count)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
             ''', (topic, search_type, limit_count, len(posts_data)))
-            session_id = cursor.lastrowid
+            session_id = cursor.fetchone()[0]
             
             for post_data in posts_data:
                 # Insert or update post
                 cursor.execute('''
-                    INSERT OR REPLACE INTO posts 
+                    INSERT INTO posts 
                     (reddit_id, title, score, url, author, created_utc, num_comments, subreddit, clean_title)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (reddit_id) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    score = EXCLUDED.score,
+                    url = EXCLUDED.url,
+                    author = EXCLUDED.author,
+                    created_utc = EXCLUDED.created_utc,
+                    num_comments = EXCLUDED.num_comments,
+                    subreddit = EXCLUDED.subreddit,
+                    clean_title = EXCLUDED.clean_title
+                    RETURNING id
                 ''', (
                     post_data['id'],
                     post_data['title'],
@@ -91,8 +106,7 @@ class SentimentDatabase:
                     post_data.get('subreddit', ''),
                     post_data.get('clean_title', '')
                 ))
-                
-                post_id = cursor.lastrowid
+                post_id = cursor.fetchone()[0]
                 
                 # Insert sentiment analysis results
                 sentiment_data = [
@@ -105,9 +119,13 @@ class SentimentDatabase:
                 for analysis_type, label, score, *extra in sentiment_data:
                     emotion = extra[0] if extra else None
                     cursor.execute('''
-                        INSERT OR REPLACE INTO sentiment_analysis 
+                        INSERT INTO sentiment_analysis 
                         (post_id, analysis_type, sentiment_label, sentiment_score, emotion_label)
-                        VALUES (?, ?, ?, ?, ?)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (post_id, analysis_type) DO UPDATE SET
+                        sentiment_label = EXCLUDED.sentiment_label,
+                        sentiment_score = EXCLUDED.sentiment_score,
+                        emotion_label = EXCLUDED.emotion_label
                     ''', (post_id, analysis_type, label, score, emotion))
             
             conn.commit()
@@ -115,7 +133,7 @@ class SentimentDatabase:
     
     def get_latest_analysis(self, limit: int = 50) -> Dict:
         """Get the latest sentiment analysis results"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             # Get the most recent session
             cursor = conn.cursor()
             cursor.execute('''
@@ -142,10 +160,10 @@ class SentimentDatabase:
                 LEFT JOIN sentiment_analysis sa_vader ON p.id = sa_vader.post_id AND sa_vader.analysis_type = 'vader'
                 LEFT JOIN sentiment_analysis sa_textblob ON p.id = sa_textblob.post_id AND sa_textblob.analysis_type = 'textblob'
                 LEFT JOIN sentiment_analysis sa_bert ON p.id = sa_bert.post_id AND sa_bert.analysis_type = 'bert_sentiment'
-                LEFT JOIN sentiment_analysis sa_emotion ON p.id = sa_emotion.post_id AND sa_emotion.analysis_type = 'bert_emotion'
+                LEFT JOIN sentiment_analysis sa_emotion ON p.id = sa_bert.post_id AND sa_bert.analysis_type = 'bert_emotion'
                 WHERE p.created_at >= (SELECT created_at FROM analysis_sessions ORDER BY created_at DESC LIMIT 1)
                 ORDER BY p.created_at DESC
-                LIMIT ?
+                LIMIT %s
             ''', (limit,))
             
             posts = cursor.fetchall()
@@ -183,21 +201,21 @@ class SentimentDatabase:
     
     def get_analysis_history(self, limit: int = 10) -> List[Dict]:
         """Get analysis session history"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 SELECT * FROM analysis_sessions 
                 ORDER BY created_at DESC 
-                LIMIT ?
+                LIMIT %s
             ''', (limit,))
             
             sessions = cursor.fetchall()
             columns = ['id', 'topic', 'search_type', 'limit_count', 'posts_count', 'created_at']
-            return [dict(zip(columns, session)) for session in sessions]
+            return [dict(zip(columns, row)) for row in sessions]
     
     def search_posts_by_topic(self, topic: str, limit: int = 50) -> List[Dict]:
         """Search posts by topic"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 SELECT 
@@ -212,10 +230,10 @@ class SentimentDatabase:
                 LEFT JOIN sentiment_analysis sa_vader ON p.id = sa_vader.post_id AND sa_vader.analysis_type = 'vader'
                 LEFT JOIN sentiment_analysis sa_textblob ON p.id = sa_textblob.post_id AND sa_textblob.analysis_type = 'textblob'
                 LEFT JOIN sentiment_analysis sa_bert ON p.id = sa_bert.post_id AND sa_bert.analysis_type = 'bert_sentiment'
-                LEFT JOIN sentiment_analysis sa_emotion ON p.id = sa_emotion.post_id AND sa_emotion.analysis_type = 'bert_emotion'
-                WHERE p.title LIKE ? OR p.clean_title LIKE ?
+                LEFT JOIN sentiment_analysis sa_emotion ON p.id = sa_bert.post_id AND sa_bert.analysis_type = 'bert_emotion'
+                WHERE p.title ILIKE %s OR p.clean_title ILIKE %s
                 ORDER BY p.created_at DESC
-                LIMIT ?
+                LIMIT %s
             ''', (f'%{topic}%', f'%{topic}%', limit))
             
             posts = cursor.fetchall()
@@ -224,7 +242,7 @@ class SentimentDatabase:
     
     def get_database_stats(self) -> Dict:
         """Get database statistics"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             
             cursor.execute('SELECT COUNT(*) FROM posts')

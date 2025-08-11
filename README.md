@@ -6,7 +6,7 @@ A real-time sentiment analysis system that analyzes public opinion on polarizing
 This project provides a web-based tool that:
 - Scrapes posts from Reddit using PRAW API
 - Analyzes sentiment using multiple NLP models (VADER, TextBlob, BERT)
-- Stores data efficiently in SQLite database
+- Stores data efficiently in PostgreSQL database
 - Visualizes public opinion trends with interactive charts
 - Supports both topic-based search and subreddit-specific analysis
 
@@ -15,7 +15,7 @@ This project provides a web-based tool that:
 - **Frontend**: React.js, Vite, Material-UI, Chart.js
 - **NLP**: NLTK, TextBlob, HuggingFace Transformers
 - **Data Processing**: pandas, numpy
-- **Database**: SQLite
+- **Database**: PostgreSQL
 - **Web Scraping**: PRAW (Reddit API)
 
 ## Project Structure
@@ -31,7 +31,7 @@ EECS 4080/
 │   ├── src/                # React source code
 │   ├── public/             # Static files
 │   └── package.json        # Dependencies
-├── data/                   # SQLite database storage
+├── data/                   # Data storage directory
 ├── requirements.txt        # Python dependencies
 └── test_api.py            # API testing script
 ```
@@ -49,7 +49,7 @@ EECS 4080/
 - **BERT**: Advanced transformer-based sentiment and emotion classification
 
 ### 💾 **Efficient Data Storage**
-- **SQLite Database**: Single database file for all data
+- **PostgreSQL Database**: Production-ready database with advanced features
 - **Duplicate Prevention**: Avoids analyzing the same post twice
 - **Session Tracking**: Complete history of all analyses
 - **Fast Queries**: Efficient search across all stored data
@@ -146,7 +146,7 @@ python test_api.py
 1. **User Input**: Topic, post limit, search type
 2. **Reddit Scraping**: Fetch posts using PRAW API
 3. **Sentiment Analysis**: Apply VADER, TextBlob, BERT models
-4. **Database Storage**: Save to SQLite with session tracking
+4. **Database Storage**: Save to PostgreSQL with session tracking
 5. **Results Display**: Show charts and tables in frontend
 
 ## License
