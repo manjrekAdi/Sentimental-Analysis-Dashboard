@@ -67,7 +67,7 @@ const searchTypes = [
 ];
 
 const apiBase = process.env.NODE_ENV === 'production' 
-  ? 'https://your-backend-service-name.onrender.com/api'  // Update this with your actual backend service name
+  ? 'https://sentimental-analysis-dashboard.onrender.com/api'
   : 'http://localhost:5001/api';
 
 function App() {
