@@ -33,5 +33,7 @@ from api.routes import api_bp
 app.register_blueprint(api_bp, url_prefix='/api')
 
 if __name__ == '__main__':
+    # Use Render's PORT environment variable for free tier
     port = int(os.environ.get('PORT', 5001))
-    app.run(host='0.0.0.0', port=port, debug=True) 
+    # Use 0.0.0.0 to bind to all available network interfaces
+    app.run(host='0.0.0.0', port=port, debug=False)  # Set debug=False for production 

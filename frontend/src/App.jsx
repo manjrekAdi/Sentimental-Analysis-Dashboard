@@ -66,7 +66,9 @@ const searchTypes = [
   { value: 'subreddit', label: 'Specific Subreddit' },
 ];
 
-const apiBase = 'http://localhost:5001/api';
+const apiBase = process.env.NODE_ENV === 'production' 
+  ? 'https://your-backend-service-name.onrender.com/api'  // Update this with your actual backend service name
+  : 'http://localhost:5001/api';
 
 function App() {
   const theme = useTheme();
