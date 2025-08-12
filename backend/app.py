@@ -19,19 +19,14 @@ except Exception as e:
 app = Flask(__name__)
 
 # Configure CORS to allow requests from your frontend domain
-CORS(app, origins=[
-    "https://sentimental-analysis-dashboard-1.onrender.com",
-    "http://localhost:5173",  # For local development
-    "http://localhost:3000"   # Alternative local port
-], supports_credentials=True)
+CORS(app, origins="*", supports_credentials=False)
 
 # Add CORS headers to all responses
 @app.after_request
 def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', 'https://sentimental-analysis-dashboard-1.onrender.com')
+    response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
 
 # Configuration
