@@ -22,13 +22,18 @@ db = SentimentDatabase()
 def get_scraper():
     global scraper
     if scraper is None:
-        scraper = RedditAPIScraper(
-            client_id=os.getenv('REDDIT_CLIENT_ID'),
-            client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
-            username=os.getenv('REDDIT_USERNAME'),
-            password=os.getenv('REDDIT_PASSWORD'),
-            user_agent=os.getenv('REDDIT_USER_AGENT')
-        )
+        try:
+            scraper = RedditAPIScraper(
+                client_id=os.getenv('REDDIT_CLIENT_ID'),
+                client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
+                username=os.getenv('REDDIT_USERNAME'),
+                password=os.getenv('REDDIT_PASSWORD'),
+                user_agent=os.getenv('REDDIT_USER_AGENT', 'SentimentAnalysis:1.0')
+            )
+            print("✅ Reddit scraper initialized successfully")
+        except Exception as e:
+            print(f"❌ Failed to initialize Reddit scraper: {e}")
+            return None
     return scraper
 
 @api_bp.route('/scrape', methods=['POST'])
@@ -76,8 +81,28 @@ def analyze_sentiment():
         search_type = data.get('search_type', 'search')  # 'subreddit' or 'search'
         display_limit = data.get('display_limit', limit)  # How many posts to display
         
+        # Validate Reddit credentials
+        if not all([os.getenv('REDDIT_CLIENT_ID'), os.getenv('REDDIT_CLIENT_SECRET'), 
+                   os.getenv('REDDIT_USERNAME'), os.getenv('REDDIT_PASSWORD')]):
+            return jsonify({
+                'success': False,
+                'error': 'Reddit API credentials not configured properly'
+            }), 500
+        
         scraper = get_scraper()
+        if not scraper:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to initialize Reddit scraper'
+            }), 500
+            
         posts = scraper.fetch_posts_by_topic(topic, limit, search_type)
+        if not posts:
+            return jsonify({
+                'success': False,
+                'error': f'No posts found for topic "{topic}" using {search_type} method'
+            }), 404
+            
         df = scraper.to_dataframe(posts)
         df = scraper.add_sentiment_columns(df)
         
@@ -221,6 +246,18 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'message': 'API is running',
+        'timestamp': datetime.now().isoformat(),
+        'reddit_configured': bool(os.getenv('REDDIT_CLIENT_ID')),
+        'database_configured': bool(os.getenv('DATABASE_URL'))
+    }), 200
+
+@api_bp.route('/test', methods=['GET', 'POST'])
+def test_endpoint():
+    """Simple test endpoint for CORS testing"""
+    return jsonify({
+        'success': True,
+        'message': 'Test endpoint working',
+        'method': request.method,
         'timestamp': datetime.now().isoformat()
     }), 200
 

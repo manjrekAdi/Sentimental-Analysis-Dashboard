@@ -23,34 +23,43 @@ CORS(app,
      origins=["https://sentimental-analysis-dashboard-1.onrender.com", "http://localhost:5173"],
      supports_credentials=False,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "Accept"])
+     allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With"],
+     expose_headers=["Access-Control-Allow-Origin"])
 
 # Add CORS headers to all responses
 @app.after_request
 def after_request(response):
-    # Handle preflight requests
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.status_code = 200
-    
-    # Get the origin from the request
-    origin = request.headers.get('Origin')
+    # Always add CORS headers to every response
+    origin = request.headers.get('Origin', '')
     allowed_origins = [
         'https://sentimental-analysis-dashboard-1.onrender.com',
         'http://localhost:5173',
         'http://127.0.0.1:5173'
     ]
     
+    # Allow requests from allowed origins
     if origin in allowed_origins:
-        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers['Access-Control-Allow-Origin'] = origin
     else:
-        # Fallback to main frontend domain
-        response.headers.add('Access-Control-Allow-Origin', 'https://sentimental-analysis-dashboard-1.onrender.com')
+        # For production, always allow the main frontend
+        response.headers['Access-Control-Allow-Origin'] = 'https://sentimental-analysis-dashboard-1.onrender.com'
     
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Max-Age', '86400')  # Cache preflight for 24 hours
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, X-Requested-With'
+    response.headers['Access-Control-Allow-Credentials'] = 'false'
+    response.headers['Access-Control-Max-Age'] = '86400'
+    
     return response
+
+# Handle preflight OPTIONS requests
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "*")
+        response.headers.add('Access-Control-Allow-Methods', "*")
+        return response
 
 # Configuration
 app.config.update(
@@ -66,7 +75,20 @@ def health_check():
         'message': 'API is running',
         'environment': os.getenv('FLASK_ENV', 'development'),
         'database': 'postgresql',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'cors_enabled': True
+    })
+
+@app.route('/api/test-cors', methods=['GET', 'POST', 'OPTIONS'])
+def test_cors():
+    """Simple CORS test endpoint"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    return jsonify({
+        'success': True,
+        'message': 'CORS test successful',
+        'method': request.method,
+        'origin': request.headers.get('Origin', 'None')
     })
 
 # Import and register blueprints
