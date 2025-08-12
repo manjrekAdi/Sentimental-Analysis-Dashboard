@@ -33,7 +33,20 @@ def after_request(response):
         response = make_response()
         response.status_code = 200
     
-    response.headers.add('Access-Control-Allow-Origin', 'https://sentimental-analysis-dashboard-1.onrender.com')
+    # Get the origin from the request
+    origin = request.headers.get('Origin')
+    allowed_origins = [
+        'https://sentimental-analysis-dashboard-1.onrender.com',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173'
+    ]
+    
+    if origin in allowed_origins:
+        response.headers.add('Access-Control-Allow-Origin', origin)
+    else:
+        # Fallback to main frontend domain
+        response.headers.add('Access-Control-Allow-Origin', 'https://sentimental-analysis-dashboard-1.onrender.com')
+    
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     response.headers.add('Access-Control-Max-Age', '86400')  # Cache preflight for 24 hours
