@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -19,14 +19,24 @@ except Exception as e:
 app = Flask(__name__)
 
 # Configure CORS to allow requests from your frontend domain
-CORS(app, origins="*", supports_credentials=False)
+CORS(app, 
+     origins=["https://sentimental-analysis-dashboard-1.onrender.com", "http://localhost:5173"],
+     supports_credentials=False,
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization", "Accept"])
 
 # Add CORS headers to all responses
 @app.after_request
 def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    # Handle preflight requests
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.status_code = 200
+    
+    response.headers.add('Access-Control-Allow-Origin', 'https://sentimental-analysis-dashboard-1.onrender.com')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Max-Age', '86400')  # Cache preflight for 24 hours
     return response
 
 # Configuration
