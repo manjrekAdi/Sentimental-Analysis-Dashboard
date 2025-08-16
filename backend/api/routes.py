@@ -30,9 +30,9 @@ def get_scraper():
                 password=os.getenv('REDDIT_PASSWORD'),
                 user_agent=os.getenv('REDDIT_USER_AGENT', 'SentimentAnalysis:1.0')
             )
-            print("✅ Reddit scraper initialized successfully")
+            print("Reddit scraper initialized successfully")
         except Exception as e:
-            print(f"❌ Failed to initialize Reddit scraper: {e}")
+            print(f"Failed to initialize Reddit scraper: {e}")
             return None
     return scraper
 

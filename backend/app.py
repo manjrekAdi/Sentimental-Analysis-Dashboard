@@ -11,9 +11,9 @@ load_dotenv()
 # Download required NLTK data
 try:
     nltk.download('vader_lexicon', quiet=True)
-    print("✅ NLTK VADER lexicon downloaded successfully")
+    print("NLTK VADER lexicon downloaded successfully")
 except Exception as e:
-    print(f"⚠️ Warning: Could not download NLTK data: {e}")
+    print(f"Warning: Could not download NLTK data: {e}")
 
 # Initialize Flask app
 app = Flask(__name__)

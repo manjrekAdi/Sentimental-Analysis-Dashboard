@@ -89,7 +89,7 @@ class Sentiment140Loader:
         # Final dataset
         final_df = df_clean[['text', 'label']].reset_index(drop=True)
         
-        print(f"✅ Loaded {len(final_df)} samples")
+        print(f"Loaded {len(final_df)} samples")
         print(f"Label distribution:")
         label_counts = final_df['label'].value_counts()
         for label, count in label_counts.items():

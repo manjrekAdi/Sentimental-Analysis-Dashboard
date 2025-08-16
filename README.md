@@ -38,23 +38,23 @@ EECS 4080/
 
 ## Features
 
-### 🔍 **Flexible Search Options**
+### **Flexible Search Options**
 - **Search All Reddit**: Find posts about any topic across all subreddits
 - **Specific Subreddit**: Analyze posts from a particular subreddit
 - **Topic Examples**: climate change, vaccines, AI, politics, etc.
 
-### 📊 **Multiple Sentiment Models**
+### **Multiple Sentiment Models**
 - **VADER**: Rule-based sentiment analysis
 - **TextBlob**: Machine learning-based sentiment
 - **BERT**: Advanced transformer-based sentiment and emotion classification
 
-### 💾 **Efficient Data Storage**
+### **Efficient Data Storage**
 - **PostgreSQL Database**: Production-ready database with advanced features
 - **Duplicate Prevention**: Avoids analyzing the same post twice
 - **Session Tracking**: Complete history of all analyses
 - **Fast Queries**: Efficient search across all stored data
 
-### 📈 **Interactive Visualizations**
+### **Interactive Visualizations**
 - **Sentiment Charts**: Pie charts for each sentiment model
 - **Data Tables**: Detailed view of posts and sentiment scores
 - **Real-time Updates**: Immediate results after analysis

@@ -22,7 +22,7 @@ def run_simple_benchmark(filepath: str = "sentiment140.csv", sample_size: int = 
         sample_size: Number of samples to use (None for all)
         models: List of models to evaluate (default: all)
     """
-    print("🎯 SENTIMENT140 BENCHMARKING")
+    print("SENTIMENT140 BENCHMARKING")
     print("=" * 50)
     print(f"File: {filepath}")
     print(f"Sample size: {sample_size if sample_size else 'All'}")
@@ -31,16 +31,16 @@ def run_simple_benchmark(filepath: str = "sentiment140.csv", sample_size: int = 
     
     try:
         # Load dataset
-        print("\n📖 Loading Sentiment140 dataset...")
+        print("\nLoading Sentiment140 dataset...")
         dataset = Sentiment140Loader.load_sentiment140(filepath, sample_size)
         
         # Run evaluation
-        print(f"\n🔬 Running sentiment analysis evaluation...")
+        print(f"\nRunning sentiment analysis evaluation...")
         evaluator = SentimentEvaluator()
         results = evaluator.compare_models(dataset, models)
         
         # Generate report
-        print(f"\n📊 GENERATING REPORT")
+        print(f"\nGENERATING REPORT")
         print("=" * 30)
         report = evaluator.generate_report(results)
         print(report)
@@ -73,41 +73,41 @@ def run_simple_benchmark(filepath: str = "sentiment140.csv", sample_size: int = 
                 for i, rank in enumerate(comparison['model_rankings']['by_accuracy'], 1):
                     f.write(f"{i}. {rank['model'].upper()}: {rank['score']:.3f}\n")
         
-        print(f"\n💾 Results saved to: {filename}")
+        print(f"\nResults saved to: {filename}")
         
         # Print summary
         if 'comparison' in results:
             comparison = results['comparison']
-            print(f"\n🏆 WINNER SUMMARY:")
+            print(f"\nWINNER SUMMARY:")
             print("=" * 20)
             print(f"Best Accuracy: {comparison['best_accuracy']['model'].upper()} ({comparison['best_accuracy']['score']:.3f})")
             print(f"Best F1-Score: {comparison['best_f1']['model'].upper()} ({comparison['best_f1']['score']:.3f})")
             
-            print(f"\n📈 Model Rankings:")
+            print(f"\nModel Rankings:")
             for i, rank in enumerate(comparison['model_rankings']['by_accuracy'], 1):
                 print(f"  {i}. {rank['model'].upper()}: {rank['score']:.3f}")
         
         return results
         
     except Exception as e:
-        print(f"❌ Error during benchmarking: {e}")
+        print(f"Error during benchmarking: {e}")
         return None
 
 def quick_test(filepath: str = "sentiment140.csv"):
     """Run a quick test with 100 samples"""
-    print("🚀 QUICK TEST (100 samples)")
+    print("QUICK TEST (100 samples)")
     print("=" * 30)
     return run_simple_benchmark(filepath, 100, ['vader', 'textblob'])
 
 def full_benchmark(filepath: str = "sentiment140.csv", sample_size: int = 1000):
     """Run full benchmark with all models"""
-    print("🔬 FULL BENCHMARK")
+    print("FULL BENCHMARK")
     print("=" * 30)
     return run_simple_benchmark(filepath, sample_size, ['vader', 'textblob', 'bert'])
 
 def compare_sample_sizes(filepath: str = "sentiment140.csv"):
     """Compare performance across different sample sizes"""
-    print("📊 SAMPLE SIZE COMPARISON")
+    print("SAMPLE SIZE COMPARISON")
     print("=" * 40)
     
     sample_sizes = [100, 500, 1000, 2000]
@@ -124,12 +124,12 @@ def compare_sample_sizes(filepath: str = "sentiment140.csv"):
                     'best_model': best_model,
                     'best_accuracy': best_score
                 }
-                print(f"✅ {size} samples: {best_model.upper()} wins with {best_score:.3f}")
+                print(f"{size} samples: {best_model.upper()} wins with {best_score:.3f}")
         except Exception as e:
-            print(f"❌ Error with {size} samples: {e}")
+            print(f"Error with {size} samples: {e}")
     
     # Print comparison summary
-    print(f"\n📈 SAMPLE SIZE COMPARISON SUMMARY:")
+    print(f"\nSAMPLE SIZE COMPARISON SUMMARY:")
     print("=" * 40)
     for size, result in all_results.items():
         print(f"{size:4d} samples: {result['best_model'].upper()} ({result['best_accuracy']:.3f})")
