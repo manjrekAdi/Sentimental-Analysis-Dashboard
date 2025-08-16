@@ -4,17 +4,9 @@ from typing import List, Dict
 import os
 from dotenv import load_dotenv
 import re
-import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
 from transformers import pipeline
-
-# Download required NLTK data
-try:
-    nltk.download('vader_lexicon', quiet=True)
-    print("✅ NLTK VADER lexicon downloaded successfully")
-except Exception as e:
-    print(f"⚠️ Warning: Could not download NLTK data: {e}")
 
 class RedditAPIScraper:
     def __init__(self, client_id, client_secret, username, password, user_agent):

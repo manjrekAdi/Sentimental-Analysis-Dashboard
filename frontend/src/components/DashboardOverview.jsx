@@ -7,6 +7,7 @@ import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt
 import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
 import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
 import PsychologyIcon from '@mui/icons-material/Psychology';
+import { getMuiColorForSentiment } from '../utils/colorScheme';
 
 const DashboardOverview = ({ results, onCardClick }) => {
   if (!results) return null;
@@ -39,7 +40,7 @@ const DashboardOverview = ({ results, onCardClick }) => {
       value: `${positivePercent}%`,
       subtitle: `${positiveCount} out of ${totalVader} posts`,
       icon: <SentimentSatisfiedAltIcon fontSize="large" />,
-      color: 'success',
+      color: getMuiColorForSentiment('positive'),
       onClick: () => onCardClick && onCardClick('positive'),
     },
     {
@@ -47,7 +48,7 @@ const DashboardOverview = ({ results, onCardClick }) => {
       value: `${negativePercent}%`,
       subtitle: `${negativeCount} out of ${totalVader} posts`,
       icon: <SentimentDissatisfiedIcon fontSize="large" />,
-      color: 'error',
+      color: getMuiColorForSentiment('negative'),
       onClick: () => onCardClick && onCardClick('negative'),
     },
     {
@@ -55,7 +56,7 @@ const DashboardOverview = ({ results, onCardClick }) => {
       value: `${neutralPercent}%`,
       subtitle: `${neutralCount} out of ${totalVader} posts`,
       icon: <SentimentNeutralIcon fontSize="large" />,
-      color: 'warning',
+      color: getMuiColorForSentiment('neutral'),
       onClick: () => onCardClick && onCardClick('neutral'),
     },
     {

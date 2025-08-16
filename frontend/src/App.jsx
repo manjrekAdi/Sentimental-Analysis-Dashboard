@@ -52,6 +52,7 @@ import DashboardOverview from './components/DashboardOverview';
 import LoadingSkeleton from './components/LoadingSkeleton';
 import SamplePreview from './components/SamplePreview';
 import { generateWordCloudData, generateEmotionWordCloudData } from './utils/wordCloudUtils';
+import { getColorForSentiment, getRGBAForSentiment, getBorderColorForSentiment, getMuiColorForSentiment } from './utils/colorScheme';
 import 'chart.js/auto';
 
 const sentimentMethods = [
@@ -210,23 +211,17 @@ function App() {
     );
   }
 
-  // Enhanced chart data preparation
+  // Enhanced chart data preparation with consistent color scheme
   const getPieData = (summary, label) => {
     if (!summary) return {};
     const data = summary[label] || {};
+    
     return {
       labels: Object.keys(data),
       datasets: [
         {
           data: Object.values(data),
-          backgroundColor: [
-            '#4caf50', // green
-            '#f44336', // red
-            '#ff9800', // orange
-            '#2196f3', // blue
-            '#9c27b0', // purple
-            '#ffeb3b', // yellow
-          ],
+          backgroundColor: Object.keys(data).map(label => getColorForSentiment(label)),
           borderWidth: 2,
           borderColor: '#fff',
         },
@@ -289,28 +284,15 @@ function App() {
   const getBarData = (summary, label) => {
     if (!summary) return {};
     const data = summary[label] || {};
+    
     return {
       labels: Object.keys(data),
       datasets: [
         {
           label: label.charAt(0).toUpperCase() + label.slice(1),
           data: Object.values(data),
-          backgroundColor: [
-            'rgba(76, 175, 80, 0.8)',
-            'rgba(244, 67, 54, 0.8)',
-            'rgba(255, 152, 0, 0.8)',
-            'rgba(33, 150, 243, 0.8)',
-            'rgba(156, 39, 176, 0.8)',
-            'rgba(255, 235, 59, 0.8)',
-          ],
-          borderColor: [
-            'rgba(76, 175, 80, 1)',
-            'rgba(244, 67, 54, 1)',
-            'rgba(255, 152, 0, 1)',
-            'rgba(33, 150, 243, 1)',
-            'rgba(156, 39, 176, 1)',
-            'rgba(255, 235, 59, 1)',
-          ],
+          backgroundColor: Object.keys(data).map(label => getRGBAForSentiment(label)),
+          borderColor: Object.keys(data).map(label => getBorderColorForSentiment(label)),
           borderWidth: 1,
         },
       ],
@@ -320,19 +302,13 @@ function App() {
   const getDoughnutData = (summary, label) => {
     if (!summary) return {};
     const data = summary[label] || {};
+    
     return {
       labels: Object.keys(data),
       datasets: [
         {
           data: Object.values(data),
-          backgroundColor: [
-            '#4caf50',
-            '#f44336',
-            '#ff9800',
-            '#2196f3',
-            '#9c27b0',
-            '#ffeb3b',
-          ],
+          backgroundColor: Object.keys(data).map(label => getColorForSentiment(label)),
           borderWidth: 3,
           borderColor: '#fff',
           cutout: '60%',
@@ -355,8 +331,8 @@ function App() {
         {
           label: 'Posts per Subreddit',
           data: Object.values(subredditCounts),
-          backgroundColor: 'rgba(54, 162, 235, 0.8)',
-          borderColor: 'rgba(54, 162, 235, 1)',
+          backgroundColor: getRGBAForSentiment('neutral'), // blue for neutral/other data
+          borderColor: getBorderColorForSentiment('neutral'), // blue border
           borderWidth: 1,
         },
       ],
@@ -377,16 +353,8 @@ function App() {
           const lowerLabel = label.toLowerCase();
           return results.sentiment_summary[method][lowerLabel] || 0;
         }),
-        backgroundColor: [
-          'rgba(76, 175, 80, 0.6)',
-          'rgba(244, 67, 54, 0.6)',
-          'rgba(255, 152, 0, 0.6)',
-        ][index],
-        borderColor: [
-          'rgba(76, 175, 80, 1)',
-          'rgba(244, 67, 54, 1)',
-          'rgba(255, 152, 0, 1)',
-        ][index],
+        backgroundColor: labels.map(label => getRGBAForSentiment(label)),
+        borderColor: labels.map(label => getBorderColorForSentiment(label)),
         borderWidth: 2,
       })),
     };
@@ -910,9 +878,24 @@ function App() {
                               <Grid item xs={6} sm={4} key={sentiment}>
                                 <Chip
                                   label={`${sentiment}: ${count}`}
-                                  color={sentiment === 'positive' ? 'success' : sentiment === 'negative' ? 'error' : 'warning'}
+                                  color={getMuiColorForSentiment(sentiment)}
                                   variant="outlined"
-                                  sx={{ width: '100%' }}
+                                  sx={{ 
+                                    width: '100%',
+                                    // Custom colors to match chart scheme
+                                    ...(sentiment === 'positive' && {
+                                      borderColor: getColorForSentiment(sentiment),
+                                      color: getColorForSentiment(sentiment)
+                                    }),
+                                    ...(sentiment === 'negative' && {
+                                      borderColor: getColorForSentiment(sentiment),
+                                      color: getColorForSentiment(sentiment)
+                                    }),
+                                    ...(sentiment === 'neutral' && {
+                                      borderColor: getColorForSentiment(sentiment),
+                                      color: getColorForSentiment(sentiment)
+                                    })
+                                  }}
                                 />
                               </Grid>
                             ))}
